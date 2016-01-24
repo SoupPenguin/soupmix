@@ -1,5 +1,0 @@
-﻿ 2015-10-12 Will Hunt <half-shot@molrams.com>
- 	* CHANGELOG: Added this file.
- 	* General: Set version to 0.1.0
- 	* Modules/MetaModule.cs: Added functions for load and version.
- 	* BackendModule.cs: Added option to report load, which defaults to the number of queued connections.
