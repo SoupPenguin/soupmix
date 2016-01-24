@@ -1,0 +1,8 @@
+/home/will/GitRepos/WebGamePlatform/server/PlatformBackend/PlatformBackend/obj/x86/Debug/.NETFramework,Version=v4.5.AssemblyAttribute.cs
+/home/will/GitRepos/WebGamePlatform/server/PlatformBackend/PlatformBackend/bin/Debug/PlatformBackend.exe.config
+/home/will/GitRepos/WebGamePlatform/server/PlatformBackend/PlatformBackend/bin/Debug/PlatformBackend.exe.mdb
+/home/will/GitRepos/WebGamePlatform/server/PlatformBackend/PlatformBackend/bin/Debug/PlatformBackend.exe
+/home/will/GitRepos/WebGamePlatform/server/PlatformBackend/PlatformBackend/obj/x86/Debug/PlatformBackend.exe
+/home/will/GitRepos/WebGamePlatform/server/PlatformBackend/PlatformBackend/obj/x86/Debug/PlatformBackend.exe.mdb
+/home/will/GitRepos/WebGamePlatform/server/PlatformBackend/PlatformBackend/bin/Debug/Newtonsoft.Json.dll
+/home/will/GitRepos/WebGamePlatform/server/PlatformBackend/PlatformBackend/bin/Debug/MySql.Data.dll
