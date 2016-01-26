@@ -49,34 +49,6 @@ namespace Switch.Modules
             return default(SessionObject);
         }
 
-        public UserPermissions GetUserPermissionSet(int uid){
-            UserPermissions obj = new UserPermissions();
-            using (MySqlConnection conn = Program.GetMysqlConnection())
-            {
-                MySqlCommand cmd = conn.CreateCommand();
-                cmd.CommandText = @"
-                   SELECT *
-                   FROM permission
-                   WHERE uid = @uid";
-                cmd.Parameters.AddWithValue("@uid", uid);
-                cmd.Prepare();
-                MySqlDataReader read = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
-                if (read.HasRows)
-                {
-                    read.Read();
-                    obj.openLibrary = (read.GetUInt16(1) == 1);
-                    obj.openStore = (read.GetUInt16(2) == 1);
-                    obj.openSocial = (read.GetUInt16(3) == 1);
-                    obj.openGroups = (read.GetUInt16(4) == 1);
-                    obj.openDev = (read.GetUInt16(5) == 1);
-                    obj.openAdmin = (read.GetUInt16(6) == 1);
-                }
-                read.Close();
-            }
-            
-            return obj;   
-        }
-
         private bool CheckPrivilege(int uid,string priv){
             bool hasperm = false;
             using (MySqlConnection conn = Program.GetMysqlConnection())
@@ -210,7 +182,7 @@ namespace Switch.Modules
                 SessionObject session = new SessionObject();
                 session.agent = con.Request.UserAgent;
                 session.host = con.Request.RemoteEndPoint.Address.ToString();
-                session.timestamp = Program.GetEpoch();
+                session.timestamp = Util.GetEpoch();
                 session.token = GenerateToken();
                 session.uid = uid;
                 currentSessions.Add(session.token, session);
@@ -268,7 +240,7 @@ namespace Switch.Modules
             isValid = currentSessions.TryGetValue(token, out obj);
             if (isValid)
             {
-                isValid = (obj.agent == useragent) && obj.host == hostaddress && (obj.timestamp + MAXSESSIONTIME > Program.GetEpoch()); 
+                isValid = (obj.agent == useragent) && obj.host == hostaddress && (obj.timestamp + MAXSESSIONTIME > Util.GetEpoch()); 
                 //Remove the session as it's either been partially compromised, or timestamp is up.
                 if (!isValid)
                 {
@@ -462,7 +434,6 @@ namespace Switch.Modules
                     profiles[i].uid = uids[i];
                     profiles[i].nickname = reader.GetString(0);
                     profiles[i].avatar = GetGravatar(reader.GetString(1));
-                    profiles[i].developer = reader.GetUInt16(2);
                     i++;
                 }
                 reader.Close();
@@ -564,10 +535,6 @@ namespace Switch.Modules
                     }
                     profile.nickname = reader.GetString(0);
                     profile.avatar = GetGravatar(reader.GetString(1));
-                    if (!reader.IsDBNull(2))
-                    {
-                        profile.developer = reader.GetUInt32(2);
-                    }
                     reader.Close();
                 }
             }
@@ -693,47 +660,6 @@ namespace Switch.Modules
                         {
                             message = System.Text.UTF8Encoding.Default.GetBytes(JsonConvert.SerializeObject(false));
                         }
-                    }
-                    break;
-                case "permissions":
-                    if (con.Request.HttpMethod == "GET")
-                    {
-                        if (isauthenticated)
-                        {
-                            token = con.Request.Headers.Get("LoginToken");
-                            int uid = (int)currentSessions[token].uid;
-                            UserPermissions perms = GetUserPermissionSet(uid);
-                            message = Encoding.UTF8.GetBytes(JObject.FromObject(perms).ToString());
-                        }
-                    }
-                    break;
-                case "devinfo":
-                    string devid = con.Request.QueryString.Get("id");
-                    int id;
-                    if (int.TryParse(devid, out id))
-                    {
-                        using (MySqlConnection conn = Program.GetMysqlConnection())
-                        {
-                            MySqlCommand cmd = conn.CreateCommand();
-                            cmd.CommandText = "SELECT * \nFROM webPlatform.developer\nWHERE id = @id";
-                            cmd.Parameters.AddWithValue("@id", id);
-                            cmd.Prepare();
-                            Developer dev = default(Developer);
-                            MySqlDataReader read = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
-                            if (read.HasRows)
-                            {
-                                read.Read();
-                                dev.id = id;
-                                dev.name = read.GetString(1);
-                                message = Encoding.UTF8.GetBytes(JObject.FromObject(dev).ToString());
-                            }
-                            else
-                            {
-                                message = Encoding.UTF8.GetBytes("false");
-                            }
-                            read.Close();
-                        }
-                        
                     }
                     break;
                 case "bug":

@@ -27,8 +27,6 @@ namespace Switch
         public static bool DatabaseAvaliable = false;
         public static HttpMonitor httpModule;
         public static UserModule userModule;
-        public static PackageModule packageModule;
-        public static ProjectModule projectModule;
         public static List<string> Domains;
         static List<BackendModule> modList;
         static bool shouldRun = true;
@@ -99,11 +97,6 @@ namespace Switch
                 contest.Close();
             }
 
-			string pwd1 = UserModule.HashPassword("TestTestTest","abcdefghi");
-            string pwd2 = UserModule.HashPassword("TestTestTest","abcdefghi");
-
-            bool works = pwd1 == pwd2;
-
             LoadModules();
 
             while (shouldRun)
@@ -152,15 +145,9 @@ namespace Switch
 
 			httpModule = new HttpMonitor ();
 			userModule = new UserModule ();
-			packageModule = new PackageModule ();
-			projectModule = new ProjectModule ();
 
 			loadQueue.Add (httpModule);
-			loadQueue.Add (packageModule);
 			loadQueue.Add (userModule);
-			loadQueue.Add (projectModule);
-			loadQueue.Add (new PeerJSModule ());
-			loadQueue.Add (new IDECommunicationModule ());
 			loadQueue.Add (new MetaModule ());
 
 			GetCompatibleMods (loadQueue, modList, ref processingQueue);
@@ -226,26 +213,6 @@ namespace Switch
             }
         }
 
-        private static void handleCommand(string command){
-            string[] commands = command.Split(splitBy);
-            switch (commands[0])
-            {
-                case "quit":
-                    shouldRun = false;
-                    break;
-                case "encrypt":
-                    string psalt = UserModule.HashPassword(commands[1]);
-                    Console.WriteLine(psalt);
-                    break;
-                default:
-                    Console.WriteLine("Didn't understand the command.");
-                    break;
-            }
-        }
-
-        public static uint GetEpoch(){
-            return (uint)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds;
-        }
     }
      
 }

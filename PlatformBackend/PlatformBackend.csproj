@@ -49,12 +49,8 @@
     <Compile Include="Util.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="Modules\HttpModule.cs" />
-    <Compile Include="Modules\IDECommunicationModule.cs" />
-    <Compile Include="Modules\ProjectModule.cs" />
-    <Compile Include="Modules\PeerJSModule.cs" />
     <Compile Include="Modules\WebsocketModule.cs" />
     <Compile Include="Modules\UserModule.cs" />
-    <Compile Include="Modules\PackageModule.cs" />
     <Compile Include="Modules\MetaModule.cs" />
     <Compile Include="Modules\HttpMonitor.cs" />
   </ItemGroup>
@@ -62,7 +58,6 @@
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="app.config" />
-    <None Include="CHANGELOG" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Modules\" />

@@ -19,6 +19,10 @@ namespace Switch
                 sb.Append(hash[i].ToString("X2"));
             }
             return sb.ToString();
+		}
+
+        public static uint GetEpoch(){
+            return (uint)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds;
         }
     }
 }
