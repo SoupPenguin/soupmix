@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
-namespace Switch.Modules
+namespace SoupMix.Modules
 {
     public class HttpMonitor : BackendModule
     {

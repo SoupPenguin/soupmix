@@ -24,7 +24,7 @@ using System;
 using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-namespace Switch
+namespace SoupMix
 {
     public static class Settings
     {

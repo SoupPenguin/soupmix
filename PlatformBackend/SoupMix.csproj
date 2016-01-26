@@ -5,7 +5,7 @@
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
     <ProjectGuid>{DD7B7541-B30A-4114-8991-D49333E3354B}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>PlatformBackend</RootNamespace>
+    <RootNamespace>SoupMix</RootNamespace>
     <AssemblyName>PlatformBackend</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
@@ -53,6 +53,8 @@
     <Compile Include="Modules\UserModule.cs" />
     <Compile Include="Modules\MetaModule.cs" />
     <Compile Include="Modules\HttpMonitor.cs" />
+    <Compile Include="Modules\HelloWorld.cs" />
+    <Compile Include="Modules\TcpConsole.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

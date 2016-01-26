@@ -5,12 +5,12 @@ using System.Threading;
 using System.Text;
 using System.Collections;
 using System.Collections.Generic;
-using Switch.Structs;
+using SoupMix.Structs;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
-namespace Switch.Modules
+namespace SoupMix.Modules
 {    
     public struct RecieveStruct{
         public Socket sock;

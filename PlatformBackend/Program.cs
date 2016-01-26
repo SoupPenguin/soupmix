@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 using System.Threading;
 using System.Collections.Generic;
 using MySql.Data.MySqlClient;
-using Switch.Modules;
-namespace Switch
+using SoupMix.Modules;
+namespace SoupMix
 {
     class Program
     {
@@ -148,7 +148,9 @@ namespace Switch
 
 			loadQueue.Add (httpModule);
 			loadQueue.Add (userModule);
+			loadQueue.Add (new TcpConsole ());
 			loadQueue.Add (new MetaModule ());
+			loadQueue.Add (new HelloWorld ());
 
 			GetCompatibleMods (loadQueue, modList, ref processingQueue);
 

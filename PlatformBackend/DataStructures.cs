@@ -1,5 +1,5 @@
 ﻿using System;
-namespace Switch.Structs
+namespace SoupMix.Structs
 {
     struct TokenReply{
         public string token;

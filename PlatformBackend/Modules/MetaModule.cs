@@ -24,7 +24,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Newtonsoft.Json.Linq;
-namespace Switch.Modules
+namespace SoupMix.Modules
 {
     public class MetaModule : HttpModule
     {

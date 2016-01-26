@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlatformBackend", "PlatformBackend\PlatformBackend.csproj", "{DD7B7541-B30A-4114-8991-D49333E3354B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SoupMix", "PlatformBackend\SoupMix.csproj", "{DD7B7541-B30A-4114-8991-D49333E3354B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

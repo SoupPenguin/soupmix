@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Net;
 
-namespace Switch
+namespace SoupMix
 {
     public class BackendModule
     {

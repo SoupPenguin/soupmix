@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Text;
 using System.Threading;
-namespace Switch.Modules
+namespace SoupMix.Modules
 {
     public class HttpModule : BackendModule
     {

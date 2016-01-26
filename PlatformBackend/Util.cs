@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Security.Cryptography;
 using System.Text;
-namespace Switch
+namespace SoupMix
 {
     public class Util
     {

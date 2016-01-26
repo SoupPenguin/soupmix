@@ -10,11 +10,11 @@ using System.Reflection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using MySql.Data.MySqlClient;
-using Switch.Structs;
+using SoupMix.Structs;
 
 using System.Security.Cryptography;
 
-namespace Switch.Modules
+namespace SoupMix.Modules
 {
     public class UserModule : HttpModule
     {
