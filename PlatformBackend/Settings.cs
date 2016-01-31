@@ -107,12 +107,13 @@ namespace SoupMix
             token.Add("hosts", JToken.FromObject(saddrs));
 
             //Mysql Stuff
-            JObject mysql = new JObject();
-            mysql.Add("host",(JToken)"localhost");
-            mysql.Add("db",(JToken)"webPlatform");
-            mysql.Add("username",(JToken)"webplat");
-            mysql.Add("password",(JToken)"");
-            token.Add("mysql",mysql);
+            JObject db = new JObject();
+            db.Add("host",(JToken)"localhost");
+            db.Add("db",(JToken)"souppenguin");
+            db.Add("username",(JToken)"soupmix");
+			db.Add("password",(JToken)"");
+			db.Add("driver",(JToken)"None");
+            token.Add("db",db);
 
             new FileInfo(file).Directory.Create();
             File.WriteAllText(file, token.ToString(Formatting.Indented));

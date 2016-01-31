@@ -18,7 +18,9 @@ namespace SoupMix
         const int MYSQLWAITTIME = 5000;
         #endif
 
-        private static  char[] splitBy = { ' ' };
+		public const float VERSION = 0.1f;
+		public const string PROGRAMNAME = "SoupMix Server";
+
         private static string MYSQLHOST;
         private static string MYSQLDB;
         private static string MYSQLUNAME;
@@ -31,8 +33,13 @@ namespace SoupMix
         static List<BackendModule> modList;
         static bool shouldRun = true;
         public static Queue<string> debugMsgs;
+        public static DateTime StartedAt {
+        	get;
+        	private set;
+        }
         public static void Main(string[] args)
         {
+			StartedAt = DateTime.Now;
             debugMsgs = new Queue<string>();
             string rootconfig = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             //Check root
@@ -40,7 +47,7 @@ namespace SoupMix
             {
                 try
                 {
-                    System.IO.File.Create("/root/switchd").Close();
+					System.IO.File.Create("/root/soupmix").Close();
                     IsRoot = true;
                     rootconfig = "/etc";
                 }
@@ -49,9 +56,9 @@ namespace SoupMix
                 }
             }
 
-            Settings.LoadFile(rootconfig + "/switchd/config.json",true);
+            Settings.LoadFile(rootconfig + "/soupmix/config.json",true);
             //Load Directorys
-            string configdir = rootconfig + "/switchd/config.d";
+			string configdir = rootconfig + "/soupmix/config.d";
             System.IO.Directory.CreateDirectory(configdir);
 
             foreach (string dir in System.IO.Directory.EnumerateFiles(configdir))
@@ -65,11 +72,7 @@ namespace SoupMix
                 throw new Exception("Config doesn't have a hosts list, so switchd cannot start");
             }
 
-            //Set up mysql
-            Settings.Get<string>("mysql.host",out MYSQLHOST);
-            Settings.Get<string>("mysql.db",out MYSQLDB);
-            Settings.Get<string>("mysql.username",out MYSQLUNAME);
-            Settings.Get<string>("mysql.password",out MYSQLPASSWORD);
+          
 
             Domains = new List<string>(ips.Length);
             for (int i =0; i<ips.Length;i++)
@@ -77,31 +80,13 @@ namespace SoupMix
                 Domains.Add("http://"+ips[i]);
             }
 
-
-            //Load MYSQL Connection
-            Console.WriteLine("MYSQL Connection Connection Attempt.");
-            MySqlConnection contest = new MySqlConnection(string.Format("Server={0};Database={1};User ID={2};Password={3}",MYSQLHOST,MYSQLDB,MYSQLUNAME,MYSQLPASSWORD));
-            try
-            {
-                contest.Open();
-            }
-            catch(Exception e){
-                Console.WriteLine("[E] Connection to DB failed!\n    Server will be in low functionality until this is fixed!");
-                Console.WriteLine("[E] Exception Details:" + e.Message);
-                DatabaseAvaliable = false;
-            }
-            if (contest.State == System.Data.ConnectionState.Open)
-            {
-                Console.WriteLine("MYSQL Connection Connection Succeded.");
-                DatabaseAvaliable = true;
-                contest.Close();
-            }
+            DatabaseAvaliable = DBHelper.Connect();
 
             LoadModules();
 
             while (shouldRun)
             {
-                while (debugMsgs.Count > 1)
+                while (debugMsgs.Count > 0)
                 {
                     Console.WriteLine(debugMsgs.Dequeue());
                 }
@@ -150,7 +135,7 @@ namespace SoupMix
 			loadQueue.Add (userModule);
 			loadQueue.Add (new TcpConsole ());
 			loadQueue.Add (new MetaModule ());
-			loadQueue.Add (new HelloWorld ());
+			loadQueue.Add (new PostsModule());
 
 			GetCompatibleMods (loadQueue, modList, ref processingQueue);
 
@@ -187,7 +172,6 @@ namespace SoupMix
             }
             return load;
         }
-
         public static Dictionary<string,string> ReportStatus(){
             Dictionary<string,string> status = new Dictionary<string, string>();
             status.Add("Database Connection",DatabaseAvaliable ? "Connected" : "No Connection");
@@ -197,22 +181,15 @@ namespace SoupMix
             }
             return status;
         }
+ 
 
-        public static MySqlConnection GetMysqlConnection(){
-            MySqlConnection newcon = new MySqlConnection(string.Format("Server={0};Database={1};User ID={2};Password={3};Pooling=true",MYSQLHOST,MYSQLDB,MYSQLUNAME,MYSQLPASSWORD));
-            try
-            {
-                newcon.Open();
-                return newcon;
-            }
-            catch(Exception e)
-            {
-                #if TRACEMYSQL
-                debugMsgs.Enqueue("[MYSQL] Could not create a connection.");
-                #endif
-                Console.WriteLine(e.ToString());
-                throw new Exception("Could not get a mysql connection");
-            }
+        public static void KillServer(){
+        	System.Diagnostics.Process.GetCurrentProcess().Kill();
+        }
+
+        public static void RestartServer(){
+        	System.Diagnostics.Process.Start(Environment.CommandLine);
+        	System.Diagnostics.Process.GetCurrentProcess().Kill();
         }
 
     }
