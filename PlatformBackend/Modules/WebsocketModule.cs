@@ -148,7 +148,7 @@ namespace SoupMix.Modules
                     processingQueue.Enqueue(packet);
                     if (CanInterrupt)
                     {
-                        backendThread.Interrupt();
+                        UpdateThread.Interrupt();
                     }
                 }
             }
@@ -219,7 +219,7 @@ namespace SoupMix.Modules
         }
 
         public override void Load(){
-            backendThread = new Thread(Update);
+            UpdateThread = new Thread(Update);
             sockets = new List<Socket>();
             fragments = new Dictionary<Socket, byte[]>();
             server = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
@@ -228,7 +228,7 @@ namespace SoupMix.Modules
             server.Listen(128);
             Program.debugMsgs.Enqueue("Websocket server created for " + this.MODNAME + " on " + port);
             processingQueue = new ConcurrentQueue<WSPacket>();
-            backendThread.Start();
+			UpdateThread.Start();
             base.Load();
         }
 
@@ -505,10 +505,7 @@ namespace SoupMix.Modules
 
         public override void Unload(){
             shouldRun = false;
-            if (CanInterrupt)
-            {
-                backendThread.Interrupt();
-            }
+            Interrupt();
             server.Close();
             base.Unload();
         }
