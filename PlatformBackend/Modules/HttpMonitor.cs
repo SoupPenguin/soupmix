@@ -10,7 +10,7 @@ namespace SoupMix.Modules
     {
         private bool shouldRun = false;
         const int PORT = 8049;
-        public Dictionary<string,BackendModule> prefixModList;
+        public Dictionary<string,HttpModule> prefixModList;
         private HttpListener listen;
         public HttpMonitor() : base("HttpMonitor")
         {
@@ -20,7 +20,7 @@ namespace SoupMix.Modules
         public override void Load()
         {
             listen = new HttpListener();
-            prefixModList = new Dictionary<string, BackendModule>(5000);
+			prefixModList = new Dictionary<string, HttpModule>(5000);
             shouldRun = true;
             base.Load();
         }
@@ -52,10 +52,7 @@ namespace SoupMix.Modules
             if (modKeys.Length > 0)
             {
                 prefixModList[modKeys[0]].requests.Enqueue(con);
-                if (prefixModList[modKeys[0]].CanInterrupt)
-                {
-                    prefixModList[modKeys[0]].backendThread.Interrupt();
-                }
+				prefixModList[modKeys[0]].Interrupt();
             }
             else
             {

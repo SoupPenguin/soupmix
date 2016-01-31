@@ -12,7 +12,9 @@ using Newtonsoft.Json.Linq;
 using MySql.Data.MySqlClient;
 using SoupMix.Structs;
 
-using System.Security.Cryptography;
+using System.Data;
+using System.Data.Common;
+using System.Data.Sql;
 
 namespace SoupMix.Modules
 {
@@ -21,7 +23,7 @@ namespace SoupMix.Modules
         const uint MAXSESSIONTIME = 172800; // 2 days
         const uint TOKENSIZE = 256;
         const int HASHITERATIONS = 25000;
-        const bool RequireInvite = true;
+        const bool RequireInvite = false;
         public Dictionary<string,SessionObject> currentSessions; 
         public UserModule() : base("User","user")
         {
@@ -51,53 +53,54 @@ namespace SoupMix.Modules
 
         private bool CheckPrivilege(int uid,string priv){
             bool hasperm = false;
-            using (MySqlConnection conn = Program.GetMysqlConnection())
-            {
-                MySqlCommand cmd = conn.CreateCommand();
-                cmd.CommandText = @"
-                    SELECT @priv
-                    FROM permission
-                    WHERE uid = @uid";
-                cmd.Parameters.AddWithValue("@priv", priv);
-                cmd.Parameters.AddWithValue("@uid", uid);
-                cmd.Prepare();
-                MySqlDataReader read = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
-                read.Read();
-                hasperm = (read.GetInt16(0) == 1);
-            }
+            //TODO: Revise user permissions
+//            using (MySqlConnection conn = Program.GetMysqlConnection())
+//            {
+//                MySqlCommand cmd = conn.CreateCommand();
+//                cmd.CommandText = @"
+//                    SELECT @priv
+//                    FROM permission
+//                    WHERE uid = @uid";
+//                cmd.Parameters.AddWithValue("@priv", priv);
+//                cmd.Parameters.AddWithValue("@uid", uid);
+//                cmd.Prepare();
+//                MySqlDataReader read = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
+//                read.Read();
+//                hasperm = (read.GetInt16(0) == 1);
+//            }
             return hasperm;
         }
 
         private void CleanDatabase(object state){
             Program.debugMsgs.Enqueue("Cleaning Database");
-            using (MySqlConnection conn = Program.GetMysqlConnection())
-            {
-                MySqlCommand cmd = conn.CreateCommand();
-                cmd.CommandText = @"
-            DELETE user, friend, packsub, profile, lastLogin
-            FROM user  
-            INNER JOIN friend ON (user.uid = friend.uidA OR user.uid = friend.uidB)
-            INNER JOIN packsub ON (user.uid = packsub.uid)
-            INNER JOIN profile ON (user.uid = profile.uid)
-            INNER JOIN lastLogin ON (user.uid = lastLogin.uid)
-            WHERE user.verified = 0 
-            AND TIME_TO_SEC(TIMEDIFF(now(),user.dateCreated)) > 60*60*24*2;";
-                cmd.Prepare();
-                Program.debugMsgs.Enqueue("Removed " + cmd.ExecuteNonQuery() + " users from the database.");
-            }
+//            using (MySqlConnection conn = Program.GetMysqlConnection())
+//            {
+//                MySqlCommand cmd = conn.CreateCommand();
+//                cmd.CommandText = @"
+//            DELETE user, friend, packsub, profile, lastLogin
+//            FROM user  
+//            INNER JOIN friend ON (user.uid = friend.uidA OR user.uid = friend.uidB)
+//            INNER JOIN packsub ON (user.uid = packsub.uid)
+//            INNER JOIN profile ON (user.uid = profile.uid)
+//            INNER JOIN lastLogin ON (user.uid = lastLogin.uid)
+//            WHERE user.verified = 0 
+//            AND TIME_TO_SEC(TIMEDIFF(now(),user.dateCreated)) > 60*60*24*2;";
+//                cmd.Prepare();
+//                Program.debugMsgs.Enqueue("Removed " + cmd.ExecuteNonQuery() + " users from the database.");
+//            }
 
         }
 
         public override void Load()
         {
-            acceptMethods["auth"] = new string[]{"POST"}; acceptHeaders["auth"] = new string[]{"content-type"};
-            acceptMethods["signup"] = new string[]{"POST"}; acceptHeaders["signup"] = new string[]{"content-type"};
-            acceptMethods["deauth"] = new string[]{"GET"}; acceptHeaders["deauth"] = new string[]{"content-type","LoginToken"};
-            acceptMethods["profile"] = new string[]{"GET"}; acceptHeaders["profile"] = new string[]{"content-type","LoginToken"};
-            acceptMethods["friends"] = new string[]{"GET"}; acceptHeaders["friends"] = new string[]{"content-type","LoginToken"};
-            acceptMethods["permissions"] = new string[]{"GET"}; acceptHeaders["permissions"] = new string[]{"content-type","LoginToken"};
-            acceptMethods["devinfo"] = new string[]{"GET"}; acceptHeaders["devinfo"] = new string[]{"content-type"};
-            acceptMethods["bug"] = new string[]{"POST"}; acceptHeaders["bug"] = new string[]{"content-type"};
+            HttpMethods["auth"] = new string[]{"POST"}; HttpAcceptHeaders["auth"] = new string[]{"content-type"};
+            HttpMethods["signup"] = new string[]{"POST"}; HttpAcceptHeaders["signup"] = new string[]{"content-type"};
+            HttpMethods["deauth"] = new string[]{"GET"}; HttpAcceptHeaders["deauth"] = new string[]{"content-type","LoginToken"};
+            HttpMethods["profile"] = new string[]{"GET"}; HttpAcceptHeaders["profile"] = new string[]{"content-type","LoginToken"};
+            HttpMethods["friends"] = new string[]{"GET"}; HttpAcceptHeaders["friends"] = new string[]{"content-type","LoginToken"};
+            HttpMethods["permissions"] = new string[]{"GET"}; HttpAcceptHeaders["permissions"] = new string[]{"content-type","LoginToken"};
+            HttpMethods["devinfo"] = new string[]{"GET"}; HttpAcceptHeaders["devinfo"] = new string[]{"content-type"};
+            HttpMethods["bug"] = new string[]{"POST"}; HttpAcceptHeaders["bug"] = new string[]{"content-type"};
             currentSessions = new Dictionary<string, SessionObject>();
             //databaseCleanTimer = new System.Threading.Timer(CleanDatabase,null,5000,60*60*1000*5);
             base.Load();
@@ -132,22 +135,21 @@ namespace SoupMix.Modules
 
             if (!uandp.Equals(default(UsernamePasswordPair)))
             {
-                if (uandp.username.Length <= 4 && uandp.username.Length > 128)
+                if (uandp.username.Length <= 4 || uandp.username.Length > 128)
                 {
                     validationOK = false;
                 }
-                else if (uandp.password.Length <= 4 && uandp.password.Length > 128)
+                else if (uandp.password.Length <= 4 || uandp.password.Length > 128)
                 {
                     validationOK = false;
                 }
-                using (MySqlConnection conn = Program.GetMysqlConnection())
-                {
-                    MySqlCommand cmd = conn.CreateCommand();
-                    cmd.CommandText = "SELECT uid,password FROM webPlatform.user WHERE username = @username";
-                    cmd.Parameters.AddWithValue("@username", uandp.username);
-                    cmd.Prepare();
-                    MySqlDataReader reader = cmd.ExecuteReader(System.Data.CommandBehavior.SingleResult | System.Data.CommandBehavior.CloseConnection);
 
+					DbDataReader reader = DBHelper.ExecuteReader(
+						"SELECT id,password FROM user WHERE username = @username",
+						new Dictionary<string,object>{
+							{"@username",uandp.username}
+						},
+						true);
                     if (reader.HasRows)
                     {
                         reader.Read();
@@ -165,7 +167,6 @@ namespace SoupMix.Modules
                         validationOK = false;
                     }
                     reader.Close();
-                }
 
             }
             else
@@ -189,20 +190,14 @@ namespace SoupMix.Modules
                 TokenReply reply;
                 reply.token = session.token;
                 message = System.Text.UTF8Encoding.Default.GetBytes(JsonConvert.SerializeObject(reply));
-
-                //Log this login
-                using (MySqlConnection conn = Program.GetMysqlConnection())
-                {
-                    MySqlCommand cmd = conn.CreateCommand();
-                    cmd.CommandText = "INSERT INTO webPlatform.lastLogin VALUES(@uid,now(),@host)";
-                    cmd.Parameters.AddWithValue("@uid", uid);
-                    cmd.Parameters.AddWithValue("@host", session.host);
-                    cmd.Prepare();
-                    cmd.ExecuteNonQuery();
-                }
+				DBHelper.ExecuteQuery("INSERT INTO accesslog VALUES(now(),@uid,@host)",
+					new Dictionary<string,object>{
+					{"@uid",uid},
+					{"@host",session.host}
+				});
                 
                 //Now we wait a little bit to throw off any brute forcers.
-                Thread.Sleep( new Random(DateTime.Now.Millisecond).Next(0,1000));
+                Thread.Sleep( new Random(DateTime.Now.Millisecond).Next(0,250));
             }
         }
 
@@ -260,33 +255,27 @@ namespace SoupMix.Modules
 
 
         private bool InsertNewUser(UserSignupObject request){
-            const string SQLSTATEMENT = @"USE webPlatform;
-            INSERT INTO user (uid,username,password,dateCreated,email,verified,developer) VALUES(NULL,@username,@password,now(),@email,0,0);
-            INSERT INTO profile (uid,nickname) VALUES(LAST_INSERT_ID(),@nickname);
-            INSERT INTO permission VALUES(LAST_INSERT_ID(),1,1,0,0,0,0)";
+            const string SQLSTATEMENT = @"
+            INSERT INTO user (id,username,password,creation,email,verified) VALUES(NULL,@username,@password,now(),@email,1);
+            INSERT INTO profile (uid,nickname,avatar) VALUES(LAST_INSERT_ID(),@nickname,'');";
             bool worked = false;
-            using (MySqlConnection conn = Program.GetMysqlConnection())
-            {
-                MySqlCommand cmd = conn.CreateCommand();
-                cmd.CommandText = SQLSTATEMENT;
-                cmd.Parameters.AddWithValue("@username", request.username);
-                cmd.Parameters.AddWithValue("@password", HashPassword(request.password));
-                cmd.Parameters.AddWithValue("@email", request.email);
-                cmd.Parameters.AddWithValue("@nickname", request.nickname);
-                cmd.Prepare();
-                worked = (cmd.ExecuteNonQuery() > 0);
-            }
-            
+            int result = DBHelper.ExecuteQuery(SQLSTATEMENT,new Dictionary<string, object>(){
+                {"@username", request.username},
+                {"@password", HashPassword(request.password)},
+                {"@email", request.email},
+                {"@nickname", request.nickname}
+            });
+			worked = (result > 0);
             if(RequireInvite){
                 int uid = HashStringToInt(request.username);
-                using (MySqlConnection conn = Program.GetMysqlConnection())
-                {
-                    MySqlCommand cmd = conn.CreateCommand();
-                    cmd.CommandText = "USE webPlatform;UPDATE inviteCode SET uid = LAST_INSERT_ID() WHERE uid = @uid;";
-                    cmd.Parameters.AddWithValue("@uid", uid);
-                    cmd.Prepare();
-                    cmd.ExecuteNonQuery();
-                }
+//                using (MySqlConnection conn = Program.GetMysqlConnection())
+//                {
+//                    MySqlCommand cmd = conn.CreateCommand();
+//                    cmd.CommandText = "USE webPlatform;UPDATE inviteCode SET uid = LAST_INSERT_ID() WHERE uid = @uid;";
+//                    cmd.Parameters.AddWithValue("@uid", uid);
+//                    cmd.Prepare();
+//                    cmd.ExecuteNonQuery();
+//                }
                 
             }
 
@@ -359,16 +348,16 @@ namespace SoupMix.Modules
                     int uid = HashStringToInt(obj.username);
                     bool inviteAccepted = false;
                     //Check invite
-                    using (MySqlConnection conn = Program.GetMysqlConnection())
-                    {
-                        MySqlCommand cmd = conn.CreateCommand();
-                        cmd.CommandText = "UPDATE inviteCode SET uid = @uid WHERE code = @code AND uid = -1";
-                        cmd.Parameters.AddWithValue("@code", obj.invite);
-                        cmd.Parameters.AddWithValue("@uid", uid);
-                        cmd.Prepare();
-                        inviteAccepted = (cmd.ExecuteNonQuery() > 0);
-                    }
-                    
+//                    using (MySqlConnection conn = Program.GetMysqlConnection())
+//                    {
+//                        MySqlCommand cmd = conn.CreateCommand();
+//                        cmd.CommandText = "UPDATE inviteCode SET uid = @uid WHERE code = @code AND uid = -1";
+//                        cmd.Parameters.AddWithValue("@code", obj.invite);
+//                        cmd.Parameters.AddWithValue("@uid", uid);
+//                        cmd.Prepare();
+//                        inviteAccepted = (cmd.ExecuteNonQuery() > 0);
+//                    }
+//                    
                     return inviteAccepted;
                 }
             }
@@ -381,16 +370,16 @@ namespace SoupMix.Modules
             const string SQLSTATEMENT = @"USE webPlatform;
             SELECT uid FROM webPlatform.user WHERE username = @username";
             bool hasRows = false;
-            using (MySqlConnection conn = Program.GetMysqlConnection())
-            {
-                MySqlCommand cmd = conn.CreateCommand();
-                cmd.CommandText = SQLSTATEMENT;
-                cmd.Parameters.AddWithValue("@username", username);
-                cmd.Prepare();
-                MySqlDataReader reader = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
-                hasRows = reader.HasRows;
-                reader.Close();
-            }
+//            using (MySqlConnection conn = Program.GetMysqlConnection())
+//            {
+//                MySqlCommand cmd = conn.CreateCommand();
+//                cmd.CommandText = SQLSTATEMENT;
+//                cmd.Parameters.AddWithValue("@username", username);
+//                cmd.Prepare();
+//                MySqlDataReader reader = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
+//                hasRows = reader.HasRows;
+//                reader.Close();
+//            }
             
             return hasRows;
         }
@@ -419,25 +408,25 @@ namespace SoupMix.Modules
         }
 
         public UserProfile[] GetUserProfiles(int[] uids){
-            UserProfile[] profiles;
-            using (MySqlConnection conn = Program.GetMysqlConnection())
-            {
-                MySqlCommand cmd = conn.CreateCommand();
-                string uidstring = String.Join(",", uids);
-                cmd.CommandText = "SELECT nickname,email,developer\nFROM user, profile\nWHERE user.uid = profile.uid AND user.uid IN (" + uidstring + ")";
-                cmd.Prepare();
-                MySqlDataReader reader = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
-                profiles = new UserProfile[uids.Length];
-                int i = 0;
-                while (reader.Read())
-                {
-                    profiles[i].uid = uids[i];
-                    profiles[i].nickname = reader.GetString(0);
-                    profiles[i].avatar = GetGravatar(reader.GetString(1));
-                    i++;
-                }
-                reader.Close();
-            }
+            UserProfile[] profiles = new UserProfile[1];
+//            using (MySqlConnection conn = Program.GetMysqlConnection())
+//            {
+//                MySqlCommand cmd = conn.CreateCommand();
+//                string uidstring = String.Join(",", uids);
+//                cmd.CommandText = "SELECT nickname,email,developer\nFROM user, profile\nWHERE user.uid = profile.uid AND user.uid IN (" + uidstring + ")";
+//                cmd.Prepare();
+//                MySqlDataReader reader = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
+//                profiles = new UserProfile[uids.Length];
+//                int i = 0;
+//                while (reader.Read())
+//                {
+//                    profiles[i].uid = uids[i];
+//                    profiles[i].nickname = reader.GetString(0);
+//                    profiles[i].avatar = GetGravatar(reader.GetString(1));
+//                    i++;
+//                }
+//                reader.Close();
+//            }
             
             return profiles;
         }
@@ -500,44 +489,44 @@ namespace SoupMix.Modules
             {
                 description = description.Substring(0, 500);
             }
-            using (MySqlConnection conn = Program.GetMysqlConnection())
-            {
-                MySqlCommand cmd = conn.CreateCommand();
-                cmd.CommandText = "INSERT INTO bug VALUES (NULL,@category,@game,@description,@useragent,NOW())";
-                cmd.Parameters.AddWithValue("@category", category);
-                cmd.Parameters.AddWithValue("@description", description);
-                cmd.Parameters.AddWithValue("@userAgent", useragent);
-                cmd.Parameters.AddWithValue("@game", game);
-                cmd.Prepare();
-                cmd.ExecuteNonQuery();
-            }
+//            using (MySqlConnection conn = Program.GetMysqlConnection())
+//            {
+//                MySqlCommand cmd = conn.CreateCommand();
+//                cmd.CommandText = "INSERT INTO bug VALUES (NULL,@category,@game,@description,@useragent,NOW())";
+//                cmd.Parameters.AddWithValue("@category", category);
+//                cmd.Parameters.AddWithValue("@description", description);
+//                cmd.Parameters.AddWithValue("@userAgent", useragent);
+//                cmd.Parameters.AddWithValue("@game", game);
+//                cmd.Prepare();
+//                cmd.ExecuteNonQuery();
+//            }
             
 
         }
 
         public UserProfile GetUserProfile(int uid) {
             UserProfile profile = default(UserProfile);
-            using (MySqlConnection conn = Program.GetMysqlConnection())
-            {
-                MySqlCommand cmd = conn.CreateCommand();
-                profile.uid = uid;
-                cmd.CommandText = "SELECT nickname,email,developer\nFROM user, profile\nWHERE user.uid = profile.uid AND user.uid  = @uid";
-                cmd.Parameters.AddWithValue("@uid", uid);
-                cmd.Prepare();
-                using (MySqlDataReader reader = cmd.ExecuteReader(System.Data.CommandBehavior.SingleRow | System.Data.CommandBehavior.CloseConnection))
-                {
-                    reader.Read();
-                    if (!reader.HasRows)
-                    {
-                        reader.Close();
-                    
-                        return default(UserProfile);
-                    }
-                    profile.nickname = reader.GetString(0);
-                    profile.avatar = GetGravatar(reader.GetString(1));
-                    reader.Close();
-                }
-            }
+//            using (MySqlConnection conn = Program.GetMysqlConnection())
+//            {
+//                MySqlCommand cmd = conn.CreateCommand();
+//                profile.uid = uid;
+//                cmd.CommandText = "SELECT nickname,email,developer\nFROM user, profile\nWHERE user.uid = profile.uid AND user.uid  = @uid";
+//                cmd.Parameters.AddWithValue("@uid", uid);
+//                cmd.Prepare();
+//                using (MySqlDataReader reader = cmd.ExecuteReader(System.Data.CommandBehavior.SingleRow | System.Data.CommandBehavior.CloseConnection))
+//                {
+//                    reader.Read();
+//                    if (!reader.HasRows)
+//                    {
+//                        reader.Close();
+//                    
+//                        return default(UserProfile);
+//                    }
+//                    profile.nickname = reader.GetString(0);
+//                    profile.avatar = GetGravatar(reader.GetString(1));
+//                    reader.Close();
+//                }
+//            }
             
             return profile;
         }
@@ -625,30 +614,30 @@ namespace SoupMix.Modules
                         if (isauthenticated)
                         {
                             List<int> friends = new List<int>();
-                            using (MySqlConnection conn = Program.GetMysqlConnection())
-                            {
-                                MySqlCommand cmd = conn.CreateCommand();
-                                token = con.Request.Headers.Get("LoginToken");
-                                int uid = (int)currentSessions[token].uid;
-                                cmd.CommandText = "USE webPlatform;\nSELECT uidA,uidB\nFROM friend\nWHERE friend.uidA = @uid OR friend.uidB = @uid;";
-                                cmd.Parameters.AddWithValue("@uid", uid);
-                                cmd.Prepare();
-                                MySqlDataReader reader = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
-                                while (reader.Read())
-                                {
-                                    int uidA = reader.GetInt16(0);
-                                    int uidB = reader.GetInt16(1);
-                                    if (uidA == uid)
-                                    {
-                                        friends.Add(uidB);
-                                    }
-                                    else
-                                    {
-                                        friends.Add(uidA);
-                                    }
-                                }
-                                reader.Close();
-                            }
+//                            using (MySqlConnection conn = Program.GetMysqlConnection())
+//                            {
+//                                MySqlCommand cmd = conn.CreateCommand();
+//                                token = con.Request.Headers.Get("LoginToken");
+//                                int uid = (int)currentSessions[token].uid;
+//                                cmd.CommandText = "USE webPlatform;\nSELECT uidA,uidB\nFROM friend\nWHERE friend.uidA = @uid OR friend.uidB = @uid;";
+//                                cmd.Parameters.AddWithValue("@uid", uid);
+//                                cmd.Prepare();
+//                                MySqlDataReader reader = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
+//                                while (reader.Read())
+//                                {
+//                                    int uidA = reader.GetInt16(0);
+//                                    int uidB = reader.GetInt16(1);
+//                                    if (uidA == uid)
+//                                    {
+//                                        friends.Add(uidB);
+//                                    }
+//                                    else
+//                                    {
+//                                        friends.Add(uidA);
+//                                    }
+//                                }
+//                                reader.Close();
+//                            }
                             
                             UserProfile[] profiles = new UserProfile[0];
                             if(friends.Count > 0){
