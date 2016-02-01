@@ -21,12 +21,9 @@ namespace SoupMix
 		public const float VERSION = 0.1f;
 		public const string PROGRAMNAME = "SoupMix Server";
 
-        private static string MYSQLHOST;
-        private static string MYSQLDB;
-        private static string MYSQLUNAME;
-        private static string MYSQLPASSWORD;
         public static bool IsRoot = false;
         public static bool DatabaseAvaliable = false;
+        public static bool UseSystemD = false;
         public static HttpMonitor httpModule;
         public static UserModule userModule;
         public static List<string> Domains;
@@ -192,6 +189,9 @@ namespace SoupMix
         	System.Diagnostics.Process.GetCurrentProcess().Kill();
         }
 
+        public static void Debug(string text){
+        	debugMsgs.Enqueue("[D]"+text);
+        }
     }
      
 }

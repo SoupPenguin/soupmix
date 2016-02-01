@@ -99,11 +99,13 @@ namespace SoupMix
 
         private static void CreateDefault(string file){
             JObject token = new JObject();
-            System.Net.IPAddress[] addresses = System.Net.Dns.GetHostEntry(System.Net.Dns.GetHostName()).AddressList;
+			System.Net.IPAddress[] addresses = System.Net.Dns.GetHostEntry(System.Net.Dns.GetHostName()).AddressList;
             string[] saddrs = new string[addresses.Length];
             for(int i =0;i<addresses.Length;i++){
                 saddrs[i] = addresses[i].ToString();
+                Console.WriteLine(saddrs[i]);
             }
+
             token.Add("hosts", JToken.FromObject(saddrs));
 
             //Mysql Stuff

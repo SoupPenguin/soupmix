@@ -25,13 +25,9 @@ namespace SoupMix.Modules
             base.Load();
         }
 
-        public void HttpStart(){
-            foreach(string prefix in prefixModList.Keys){
-                foreach (string domain in Program.Domains)
-                {
-                    listen.Prefixes.Add(domain+':'+PORT+'/'+prefix+'/');
-                }
-            }
+		public void HttpStart(){
+            listen.Prefixes.Add("http://*:"+PORT+"/");
+            listen.IgnoreWriteExceptions = true;//Don't error if the client fucks with us.
             listen.Start();
             listen.BeginGetContext(HTTPResponse,null);
             Console.WriteLine("Starting HTTP listener on port " + PORT);
@@ -44,10 +40,15 @@ namespace SoupMix.Modules
             base.Unload();
         }
 
-        public void HTTPResponse(IAsyncResult res){
-            HttpListenerContext con = listen.EndGetContext(res);
-            List<string> keyList = new List<string>(prefixModList.Keys);
-            string requestURL = con.Request.RawUrl.Substring(1);
+        public void HTTPResponse (IAsyncResult res)
+		{
+			HttpListenerContext con = listen.EndGetContext (res);
+			List<string> keyList = new List<string> (prefixModList.Keys);
+			string requestURL = "";
+			if (con.Request.Url.Segments.Length > 1) {
+				requestURL = con.Request.Url.Segments[1].Replace("/","");
+			}
+			
             string[] modKeys = keyList.Where(str => requestURL.StartsWith(str)).ToArray();
             if (modKeys.Length > 0)
             {
@@ -59,6 +60,7 @@ namespace SoupMix.Modules
                 con.Response.StatusCode = 404;
                 con.Response.Close();
             }
+
             if (shouldRun)
             {
                 listen.BeginGetContext(HTTPResponse, null);

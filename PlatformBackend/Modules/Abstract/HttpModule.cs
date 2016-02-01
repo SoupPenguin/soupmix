@@ -46,17 +46,20 @@ namespace SoupMix.Modules
     	/// </summary>
         public ConcurrentQueue<HttpListenerContext> requests;
 
+		public readonly bool originCheck;
+
         /// <summary>
         /// Create a new HTTP Module.
         /// </summary>
         /// <param name="name">Internal name of the module</param>
         /// <param name="prefix">url prefix</param>
-        public HttpModule(string name,string prefix) : base(name)
+        public HttpModule(string name,string prefix,bool OriginCheck = true) : base(name)
         {
             HttpMethods = new Dictionary<string, string[]>();
 			HttpAcceptHeaders = new Dictionary<string, string[]>();
             requests = new ConcurrentQueue<HttpListenerContext>();
             this.Prefix = prefix;
+			originCheck = OriginCheck;
         }
 
         public override void Load()
@@ -105,27 +108,33 @@ namespace SoupMix.Modules
         /// <summary>
         /// Main thread update loop.
         /// </summary>
-        private void Update()
-        {
-            HttpListenerContext con;
-            string requestURL;
-            byte[] message = new byte[0];
-            while (ThreadRunning)
-            {
-                UpdateProcess();
-                while (requests.TryDequeue(out con))
-                {
-                    bool okay = true;
-                    bool close = true;
-                    requestURL = con.Request.Url.Segments[con.Request.Url.Segments.Length-1];
-                    if(requestURL.Contains("?")){
-                        requestURL = requestURL.Substring(0,requestURL.IndexOf('?'));
-                    }
-                    string origin = con.Request.Headers.Get("Origin");
-                    if (origin == null && (con.Request.LocalEndPoint.Address.ToString() != "127.0.0.1"))//Allow local testing
+        private void Update ()
+		{
+			HttpListenerContext con;
+			while (ThreadRunning) {
+				UpdateProcess ();
+				while (requests.TryDequeue (out con)) {
+					string requestURL = "";
+					byte[] message = new byte[0];
+					bool okay = true;
+					bool close = true;
+
+					if (con.Request.Url.Segments.Length >= 3) {
+						requestURL = con.Request.Url.Segments[2].Replace("/","");
+					}
+
+					string origin = con.Request.Headers.Get ("Origin");
+
+					if (!originCheck) {
+						origin = con.Request.Headers.Get ("Host");//Use the hosts
+					}
+
+					if (origin == null)
                     {
                         okay = false;
+                        con.Response.StatusCode = 400;
                     }
+
                     if (Program.Domains.Contains(origin))
                     {
                         con.Response.AddHeader("Access-Control-Allow-Origin", origin);
@@ -152,7 +161,7 @@ namespace SoupMix.Modules
                             Program.debugMsgs.Enqueue("Request was made to " + requestURL + " but no method is defined");
                         }
                     }
-                    if(okay){
+					if(okay){
                         close = HandleRequest(con,requestURL,out message);
                     }
                     if (close)

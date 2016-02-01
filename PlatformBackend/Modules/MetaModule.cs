@@ -28,34 +28,47 @@ namespace SoupMix.Modules
 {
     public class MetaModule : HttpModule
     {
-        public MetaModule() : base("Meta","api")
+        public MetaModule() : base("Meta","status",false)
         {
             
         }
-        const int LOADINTERVAL = 5;
+        const int LOADINTERVAL = 250;
 
         Dictionary<string,float[]> modLoad = new Dictionary<string, float[]>();
         int refreshTime = 0;
         Timer loadTimer;
 
-        protected override bool HandleRequest(System.Net.HttpListenerContext context, string action, out byte[] message)
-        {
-            context.Response.ContentType = "application/json";
-            string json;
-            switch (action)
-            {
-                case "status":
-                    json = JObject.FromObject(Program.ReportStatus()).ToString(Newtonsoft.Json.Formatting.None);
-                    message = System.Text.Encoding.UTF8.GetBytes(json);
+        protected override bool HandleRequest (System.Net.HttpListenerContext context, string action, out byte[] message)
+		{
+				context.Response.ContentType = "application/json";
+				string json;
+				switch (action) {
+				case "status":
+					json = JObject.FromObject (Program.ReportStatus ()).ToString (Newtonsoft.Json.Formatting.None);
+					message = System.Text.Encoding.UTF8.GetBytes (json);
+					break;
+				case "version":
+					json = JObject.FromObject (System.Reflection.Assembly.GetExecutingAssembly ().GetName ().Version).ToString (Newtonsoft.Json.Formatting.None);
+					message = System.Text.Encoding.UTF8.GetBytes (json);
+					break;
+				case "load":
+					json = JObject.FromObject (modLoad).ToString (Newtonsoft.Json.Formatting.None);
+					message = System.Text.Encoding.UTF8.GetBytes (json);
+					break;
+				case "opm":
+					string f = System.Environment.CurrentDirectory + "/opm.ogg";
+					if (System.IO.File.Exists (f)) {
+						context.Response.ContentType = "audio/ogg";
+						message = System.IO.File.ReadAllBytes (f);
+					} else {
+						context.Response.ContentType = "text/plain";
+						message = System.Text.Encoding.UTF8.GetBytes("One Punch Man cannot be found!");
+					}
                     break;
-                case "version":
-                    json = JObject.FromObject(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version).ToString(Newtonsoft.Json.Formatting.None);
-                    message = System.Text.Encoding.UTF8.GetBytes(json);
-                    break;
-                case "load":
-                    json = JObject.FromObject(modLoad).ToString(Newtonsoft.Json.Formatting.None);
-                    message = System.Text.Encoding.UTF8.GetBytes(json);
-                    break;
+                case "furr":
+					context.Response.ContentType = "text/plain";
+					message = System.Text.Encoding.UTF8.GetBytes("This server is covered in fur");
+                	break;
                 default:
                     message =System.Text.Encoding.UTF8.GetBytes("{\"error\":\"This request was not understood\"}");
                 break;
@@ -88,7 +101,7 @@ namespace SoupMix.Modules
 
 
             
-            if (refreshTime % 60000 == 0)
+            if (refreshTime % 60000 == 0) //1 minute
             {
                 foreach (string key in modLoad.Keys)
                 {
@@ -97,7 +110,7 @@ namespace SoupMix.Modules
 
             }
 
-            if (refreshTime % 300000 == 0)
+            if (refreshTime % 300000 == 0) //5 minutes
             {
                 foreach (string key in modLoad.Keys)
                 {
@@ -105,12 +118,13 @@ namespace SoupMix.Modules
                 }
             }
 
-            if (refreshTime % 900000 == 0)
+            if (refreshTime % 900000 == 0) //15 minutes
             {
                 foreach (string key in modLoad.Keys)
                 {
                     modLoad[key][2] = 0;
                 }
+				refreshTime = 0;
             }
             float readsMade = ((refreshTime / LOADINTERVAL) + 1);
             foreach(string key in load.Keys){

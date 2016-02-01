@@ -6,7 +6,7 @@
     <ProjectGuid>{DD7B7541-B30A-4114-8991-D49333E3354B}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>SoupMix</RootNamespace>
-    <AssemblyName>PlatformBackend</AssemblyName>
+    <AssemblyName>soupmix</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
@@ -37,24 +37,28 @@
     <Reference Include="MySql.Data">
       <HintPath>..\packages\MySql.Data.6.9.8\lib\net45\MySql.Data.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>..\packages\Newtonsoft.Json.8.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed">
+      <Package>monodevelop</Package>
+      <Private>True</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="BackendModule.cs" />
     <Compile Include="DataStructures.cs" />
     <Compile Include="Util.cs" />
     <Compile Include="Settings.cs" />
-    <Compile Include="Modules\HttpModule.cs" />
     <Compile Include="Modules\WebsocketModule.cs" />
     <Compile Include="Modules\UserModule.cs" />
     <Compile Include="Modules\MetaModule.cs" />
     <Compile Include="Modules\HttpMonitor.cs" />
-    <Compile Include="Modules\HelloWorld.cs" />
     <Compile Include="Modules\TcpConsole.cs" />
+    <Compile Include="Modules\Abstract\HttpModule.cs" />
+    <Compile Include="Modules\Abstract\BackendModule.cs" />
+    <Compile Include="Modules\PostsModule.cs" />
+    <Compile Include="DBHelper.cs" />
+    <Compile Include="Modules\Posts\Post.cs" />
+    <Compile Include="Modules\Users\User.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
@@ -63,5 +67,8 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Modules\" />
+    <Folder Include="Modules\Abstract\" />
+    <Folder Include="Modules\Posts\" />
+    <Folder Include="Modules\Users\" />
   </ItemGroup>
 </Project>

@@ -25,7 +25,7 @@ namespace SoupMix.Modules
         const int HASHITERATIONS = 25000;
         const bool RequireInvite = false;
         public Dictionary<string,SessionObject> currentSessions; 
-        public UserModule() : base("User","user")
+        public UserModule() : base("User","user",false)
         {
             this.RequiresDatabase = true;
         }
@@ -129,8 +129,9 @@ namespace SoupMix.Modules
             {
                 uandp = JsonConvert.DeserializeObject<UsernamePasswordPair>(data);
             }
-            catch(JsonReaderException){
+            catch(JsonException){
                 con.Response.StatusCode = 406;
+				validationOK = false;
             }
 
             if (!uandp.Equals(default(UsernamePasswordPair)))
@@ -168,36 +169,42 @@ namespace SoupMix.Modules
                     }
                     reader.Close();
 
+		  			if (!validationOK)
+		            {
+		                message = System.Text.UTF8Encoding.Default.GetBytes("{\"error\":\"Wrong Username/Password\"}");
+						con.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+		            }
+		            else
+		            {
+		                SessionObject session = new SessionObject();
+		                session.agent = con.Request.UserAgent;
+		                session.host = con.Request.RemoteEndPoint.Address.ToString();
+		                session.timestamp = Util.GetEpoch();
+		                session.token = GenerateToken();
+		                session.uid = uid;
+		                currentSessions.Add(session.token, session);
+						con.Response.StatusCode = (int)HttpStatusCode.OK;
+		
+		                //TokenReply reply;
+		                //reply.token = session.token;
+						con.Response.Cookies.Add(new Cookie("sToken",session.token));
+						con.Response.ContentType = "text/plain";
+		                message = System.Text.UTF8Encoding.Default.GetBytes("Ok");
+						DBHelper.ExecuteQuery("INSERT INTO accesslog VALUES(now(),@uid,@host)",
+							new Dictionary<string,object>{
+							{"@uid",uid},
+							{"@host",session.host}
+						});
+		                
+		                //Now we wait a little bit to throw off any brute forcers.
+		                Thread.Sleep( new Random(DateTime.Now.Millisecond).Next(0,250));
+		            }
+
             }
             else
             {
                 message = System.Text.UTF8Encoding.Default.GetBytes("{\"error\":\"Invalid JSON\"}");
-            }
-
-            if (!validationOK)
-            {
-                message = System.Text.UTF8Encoding.Default.GetBytes("{\"error\":\"Wrong Username/Password\"}");
-            }
-            else
-            {
-                SessionObject session = new SessionObject();
-                session.agent = con.Request.UserAgent;
-                session.host = con.Request.RemoteEndPoint.Address.ToString();
-                session.timestamp = Util.GetEpoch();
-                session.token = GenerateToken();
-                session.uid = uid;
-                currentSessions.Add(session.token, session);
-                TokenReply reply;
-                reply.token = session.token;
-                message = System.Text.UTF8Encoding.Default.GetBytes(JsonConvert.SerializeObject(reply));
-				DBHelper.ExecuteQuery("INSERT INTO accesslog VALUES(now(),@uid,@host)",
-					new Dictionary<string,object>{
-					{"@uid",uid},
-					{"@host",session.host}
-				});
-                
-                //Now we wait a little bit to throw off any brute forcers.
-                Thread.Sleep( new Random(DateTime.Now.Millisecond).Next(0,250));
+				con.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             }
         }
 
@@ -218,11 +225,17 @@ namespace SoupMix.Modules
             return salt + hashpword;
         }
 
-        public bool CheckAuthentication(HttpListenerContext con){
-            string token = con.Request.Headers.Get("LoginToken");
-            string useragent = con.Request.UserAgent;
-            string host = con.Request.RemoteEndPoint.Address.ToString();
-            return CheckAuthentication(token,useragent,host);
+        public bool CheckAuthentication (HttpListenerContext con)
+		{
+			Cookie c = con.Request.Cookies ["sToken"];
+			if (c != null) {
+				string token = c.Value;
+				string useragent = con.Request.UserAgent;
+				string host = con.Request.RemoteEndPoint.Address.ToString ();
+            	return CheckAuthentication(token,useragent,host);
+			} else {
+				return false;
+			}
         }
 
         public bool CheckAuthentication(string token,string useragent,string hostaddress){
@@ -252,7 +265,6 @@ namespace SoupMix.Modules
             }
             return val;
         }
-
 
         private bool InsertNewUser(UserSignupObject request){
             const string SQLSTATEMENT = @"
@@ -444,65 +456,6 @@ namespace SoupMix.Modules
 
         }
 
-        public void HandleBugReport(HttpListenerContext con, out byte[] message){
-            message = Encoding.UTF8.GetBytes("false");
-            string data = "";
-            bool dataAvaliable = true;
-            JObject obj;
-            while (dataAvaliable)
-            {
-                char c = (char)con.Request.InputStream.ReadByte();
-                if (c != (char)UInt16.MaxValue)
-                {
-                    data += c;
-                }
-                else
-                {
-                    dataAvaliable = false;
-                    con.Request.InputStream.Close();
-                }
-            }
-            try
-            {
-                obj  = JObject.Parse(data);
-            }
-            catch(JsonException){
-                return;
-            }
-
-            string category = "";
-            int game = 0;
-            string description = "";
-            string useragent = "";
-            try{
-                category = obj.GetValue("category").Value<string>();
-                description = obj.GetValue("description").Value<string>();
-                useragent = obj.GetValue("userAgent").Value<string>();
-                if(category == "Game Related"){
-                    game = int.Parse(obj.GetValue("game").Value<string>());
-                }
-            }
-            catch(Exception){
-                return;
-            }
-            if (description.Length > 500)
-            {
-                description = description.Substring(0, 500);
-            }
-//            using (MySqlConnection conn = Program.GetMysqlConnection())
-//            {
-//                MySqlCommand cmd = conn.CreateCommand();
-//                cmd.CommandText = "INSERT INTO bug VALUES (NULL,@category,@game,@description,@useragent,NOW())";
-//                cmd.Parameters.AddWithValue("@category", category);
-//                cmd.Parameters.AddWithValue("@description", description);
-//                cmd.Parameters.AddWithValue("@userAgent", useragent);
-//                cmd.Parameters.AddWithValue("@game", game);
-//                cmd.Prepare();
-//                cmd.ExecuteNonQuery();
-//            }
-            
-
-        }
 
         public UserProfile GetUserProfile(int uid) {
             UserProfile profile = default(UserProfile);
@@ -608,52 +561,52 @@ namespace SoupMix.Modules
                         con.Response.StatusCode = 405;
                     }
                     break;
-                case "friends":
-                    if (con.Request.HttpMethod == "GET")
-                    {
-                        if (isauthenticated)
-                        {
-                            List<int> friends = new List<int>();
-//                            using (MySqlConnection conn = Program.GetMysqlConnection())
-//                            {
-//                                MySqlCommand cmd = conn.CreateCommand();
-//                                token = con.Request.Headers.Get("LoginToken");
-//                                int uid = (int)currentSessions[token].uid;
-//                                cmd.CommandText = "USE webPlatform;\nSELECT uidA,uidB\nFROM friend\nWHERE friend.uidA = @uid OR friend.uidB = @uid;";
-//                                cmd.Parameters.AddWithValue("@uid", uid);
-//                                cmd.Prepare();
-//                                MySqlDataReader reader = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
-//                                while (reader.Read())
-//                                {
-//                                    int uidA = reader.GetInt16(0);
-//                                    int uidB = reader.GetInt16(1);
-//                                    if (uidA == uid)
-//                                    {
-//                                        friends.Add(uidB);
-//                                    }
-//                                    else
-//                                    {
-//                                        friends.Add(uidA);
-//                                    }
-//                                }
-//                                reader.Close();
+//                case "friends":
+//                    if (con.Request.HttpMethod == "GET")
+//                    {
+//                        if (isauthenticated)
+//                        {
+//                            List<int> friends = new List<int>();
+////                            using (MySqlConnection conn = Program.GetMysqlConnection())
+////                            {
+////                                MySqlCommand cmd = conn.CreateCommand();
+////                                token = con.Request.Headers.Get("LoginToken");
+////                                int uid = (int)currentSessions[token].uid;
+////                                cmd.CommandText = "USE webPlatform;\nSELECT uidA,uidB\nFROM friend\nWHERE friend.uidA = @uid OR friend.uidB = @uid;";
+////                                cmd.Parameters.AddWithValue("@uid", uid);
+////                                cmd.Prepare();
+////                                MySqlDataReader reader = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
+////                                while (reader.Read())
+////                                {
+////                                    int uidA = reader.GetInt16(0);
+////                                    int uidB = reader.GetInt16(1);
+////                                    if (uidA == uid)
+////                                    {
+////                                        friends.Add(uidB);
+////                                    }
+////                                    else
+////                                    {
+////                                        friends.Add(uidA);
+////                                    }
+////                                }
+////                                reader.Close();
+////                            }
+//                            
+//                            UserProfile[] profiles = new UserProfile[0];
+//                            if(friends.Count > 0){
+//                                profiles = GetUserProfiles(friends.ToArray());
 //                            }
-                            
-                            UserProfile[] profiles = new UserProfile[0];
-                            if(friends.Count > 0){
-                                profiles = GetUserProfiles(friends.ToArray());
-                            }
-                            message = System.Text.UTF8Encoding.Default.GetBytes(JsonConvert.SerializeObject(profiles));
-                        }
-                        else
-                        {
-                            message = System.Text.UTF8Encoding.Default.GetBytes(JsonConvert.SerializeObject(false));
-                        }
-                    }
-                    break;
-                case "bug":
-                    HandleBugReport(con,out message);
-                    break;
+//                            message = System.Text.UTF8Encoding.Default.GetBytes(JsonConvert.SerializeObject(profiles));
+//                        }
+//                        else
+//                        {
+//                            message = System.Text.UTF8Encoding.Default.GetBytes(JsonConvert.SerializeObject(false));
+//                        }
+//                    }
+//                    break;
+//                case "bug":
+//                    HandleBugReport(con,out message);
+//                    break;
                 default:
                     base.HandleRequest(con, requestURL, out message);
                     break;

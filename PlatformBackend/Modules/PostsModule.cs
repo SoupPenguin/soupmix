@@ -5,12 +5,14 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SoupMix.Modules;
 using System.Text;
+using SoupMix;
 namespace SoupMix
 {
 	public class PostsModule : HttpModule
 	{
-
-		public PostsModule () : base("Posts","posts")
+		const int MAXPOSTSIZE = 1000000;
+		const int DEFAULTRECENT = 10;
+		public PostsModule () : base("Posts","posts",false)
 		{
 			this.Dependencies = new string[1]{"User"};
 			this.RequiresDatabase = true;
@@ -20,16 +22,25 @@ namespace SoupMix
 		{
 			bool status = true;
 			switch (action) {
-				case "posts":
-					message = UTF8Encoding.UTF8.GetBytes("[]");
-					break;
-				case "post":
-					PostAction(context.Request.HttpMethod,context.Request.QueryString,out message);
-					break;
-				default:
-					status = false;
-					message = UTF8Encoding.UTF8.GetBytes("false");
-					break;
+			case "post":
+				string post = "";
+				if (context.Request.Url.Segments.Length >= 4) {
+					post = context.Request.Url.Segments [3].Replace ("/", "");
+				}
+				if (post == "" && context.Request.HttpMethod == "GET") {
+					Post[] posts = Post.GetRecent(DEFAULTRECENT);
+					message = UTF8Encoding.UTF8.GetBytes(JArray.FromObject(posts).ToString());
+				} else if (post != "") {
+					PostAction(context.Request.HttpMethod,post,context,out message);
+				} else {
+					context.Response.StatusCode = 400;
+					message = UTF8Encoding.UTF8.GetBytes(JObject.FromObject(new {error="Malformed request"}).ToString());
+				}
+				break;
+			default:
+				context.Response.StatusCode = 400;
+				message = new byte[0];
+				break;
 			}
 
 
@@ -37,16 +48,11 @@ namespace SoupMix
 		}
 
 		//List<Post> postCache;
-		bool PostAction (string method, NameValueCollection querystring, out byte[] message)
+		bool PostAction (string method,string post,System.Net.HttpListenerContext context, out byte[] message)
 		{
-			string sid = querystring ["id"];
-			int id;
-			if (sid == null) {
-				message = UTF8Encoding.UTF8.GetBytes ("{\"error\":\"Missing id from query\"}");
-				return false;
-			}
+			string id = post;
 
-			if (!int.TryParse (sid, out id)) {
+			if (id.Length > 16) {
 				message = UTF8Encoding.UTF8.GetBytes ("{\"error\":\"Invalid id\"}");
 				return false;
 			}
@@ -54,67 +60,39 @@ namespace SoupMix
 			if (method == "GET") {
 				//Get post information
 				Post p = Post.FromId (id);
-				JObject obj = JObject.FromObject (p);
-				obj.Add ("body", p.GetPostContent ());
+
+				JObject obj;
+				if(p != null){
+					p.GetPostContent();
+					obj = JObject.FromObject (p);
+				}
+				else
+				{
+					obj = new JObject();
+				}
+				
 				message = UTF8Encoding.UTF8.GetBytes (obj.ToString (Formatting.None));
-			} else {
+			} 
+			else if(method == "PUT"){//TODO:Authenticate this first
+				Post p = Post.FromId (id);
+				if(p != null)
+				{
+					byte[] inputStream = new byte[MAXPOSTSIZE];
+					int written = context.Request.InputStream.Read(inputStream,0,MAXPOSTSIZE);
+					string articleText = System.Text.Encoding.UTF8.GetString(inputStream).TrimEnd((char)0x00);
+					p.SavePostContent(articleText,new User(1));
+					message = UTF8Encoding.UTF8.GetBytes("{'written':"+written+"}");
+				}
+				else
+				{
+					message = UTF8Encoding.UTF8.GetBytes("{'error':'Post does not exist!'}");
+				}
+			}
+			else {
 				message = UTF8Encoding.UTF8.GetBytes("{}");
 			}
-
-			Console.WriteLine(method);
-			Console.WriteLine(querystring);
 			return true;
-		}
-
-		Post[] GetPosts(){
-			List<Post> posts = new List<Post>();
-			return posts.ToArray();
-		}
-
-	}
-
-	public class Post{
-		public int id;
-		public string title;
-		public string subtitle;
-		public string[] tags;
-		public int author;
-
-		private Post ()
-		{
-			
-		}
-
-		public static Post FromId (int id)
-		{
-			//TODO: Implement database code for getting posts.
-			return Post.FromTemplate();
-		}
-
-		public static Post FromTemplate ()
-		{
-			//TODO: Write a templating system.
-			Post post = new Post();
-			return post;
-		}
-
-		public string GetPostContent(){
-			return "Spagetti";//TODO: Yeah, get the *actual* content.
-		}
-
-		public void DeletePost ()
-		{
-			//TODO: Code for removing posts.
-		}
-
-		public void SavePostContent(){
-
-		}
-
-		public void SavePost(){
-
 		}
 
 	}
 }
-
