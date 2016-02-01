@@ -32,7 +32,7 @@ namespace SoupMix.Modules
         {
             
         }
-        const int LOADINTERVAL = 250;
+        const int LOADINTERVAL = 5;
 
         Dictionary<string,float[]> modLoad = new Dictionary<string, float[]>();
         int refreshTime = 0;

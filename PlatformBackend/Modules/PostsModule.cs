@@ -5,7 +5,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SoupMix.Modules;
 using System.Text;
-using SoupMix;
 namespace SoupMix
 {
 	public class PostsModule : HttpModule
